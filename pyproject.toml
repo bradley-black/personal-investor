@@ -1,0 +1,19 @@
+[project]
+name = "personal-investor"
+version = "0.1.0"
+description = "Interactive investment planner with risk-based asset mix and growth projections"
+readme = "README.md"
+authors = [
+    { name = "Bradley Black", email = "brad.black1998@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "certifi>=2026.10.19",
+]
+
+[project.scripts]
+personal-investor = "personal_investor:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"

@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal Investor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --text: #1b1f24;
+    --muted: #5d6673;
+    --border: #e1e4e8;
+    --accent: #2f6fde;
+    --accent-soft: #e6eefc;
+    --good: #1f8a4c;
+    --bad: #c2412d;
+    --warn-bg: #fff6e0;
+    --warn-text: #7a5300;
+    --c-cash: #8a94a6;
+    --c-bonds: #3b82c4;
+    --c-etf: #2fa67a;
+    --c-stocks: #e07b39;
+    --c-reit: #9a6bd1;
+    --c-gold: #d4ac2b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111418;
+      --panel: #1a1e24;
+      --text: #e6e9ee;
+      --muted: #98a2b1;
+      --border: #2c323b;
+      --accent: #6c9cf0;
+      --accent-soft: #1e2a40;
+      --good: #4cc483;
+      --bad: #ee7a66;
+      --warn-bg: #3a2f12;
+      --warn-text: #f2cf7a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111418; --panel: #1a1e24; --text: #e6e9ee; --muted: #98a2b1; --border: #2c323b;
+    --accent: #6c9cf0; --accent-soft: #1e2a40; --good: #4cc483; --bad: #ee7a66;
+    --warn-bg: #3a2f12; --warn-text: #f2cf7a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+  header h1 { margin: 0 0 4px; font-size: 26px; }
+  header p { margin: 0 0 20px; color: var(--muted); }
+  a { color: var(--accent); }
+  .grid { display: grid; gap: 16px; grid-template-columns: 300px minmax(0, 1fr); align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .panel h2 { font-size: 16px; margin: 0 0 12px; }
+  .panel h3 { font-size: 14px; margin: 18px 0 8px; }
+  .stack > * + * { margin-top: 16px; }
+  .sticky { position: sticky; top: 16px; }
+  @media (max-width: 900px) { .sticky { position: static; } }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input[type=number], input[type=text], select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text); font: inherit;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field + .field { margin-top: 12px; }
+  .money { position: relative; }
+  .money span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .money input { padding-left: 32px; }
+  .contrib-row { display: grid; grid-template-columns: 1fr 112px; gap: 6px; }
+  .risk-buttons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .risk-buttons button {
+    padding: 8px 0; border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    border-radius: 8px; cursor: pointer; font: inherit; font-weight: 600;
+  }
+  .risk-buttons button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .risk-desc { margin-top: 8px; font-size: 13px; color: var(--muted); min-height: 38px; }
+  .risk-desc strong { color: var(--text); }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--text); margin-top: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .chart-wrap { position: relative; height: 340px; }
+  .mix-layout { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 16px; align-items: center; }
+  @media (max-width: 1200px) { .mix-layout { grid-template-columns: minmax(0, 1fr); } .donut-wrap { height: 170px; } }
+  .donut-wrap { position: relative; height: 190px; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  th:first-child, td:first-child { text-align: left; }
+  td.left, th.left { text-align: left; }
+  td.wrap { white-space: normal; min-width: 90px; }
+  tfoot td { font-weight: 700; border-bottom: none; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: middle; }
+  td input[type=number] { width: 72px; padding: 4px 6px; text-align: right; }
+  #mixTable th, #mixTable td { padding-left: 6px; padding-right: 6px; }
+  td input.amount-input { width: 92px; }
+  td input[readonly] { background: transparent; border-style: dashed; color: var(--muted); cursor: default; }
+  td input[readonly]:focus { outline: none; }
+  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .btn {
+    padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); cursor: pointer; font: inherit; font-size: 13px; text-decoration: none; display: inline-block;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.small { padding: 3px 8px; font-size: 12px; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .warn { background: var(--warn-bg); color: var(--warn-text); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  .warn code { font-size: 12px; }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .sub { display: block; font-size: 11px; }
+  .add-form { display: grid; grid-template-columns: 1fr 1.4fr 1fr 1.4fr 90px auto; gap: 8px; align-items: end; }
+  @media (max-width: 820px) { .add-form { grid-template-columns: 1fr 1fr; } }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--bg); display: flex; flex-direction: column; gap: 4px; }
+  .card .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card .ticker { font-weight: 700; }
+  .card .why { font-size: 12px; color: var(--muted); flex: 1; }
+  .card .price { font-variant-numeric: tabular-nums; font-size: 13px; }
+  .card .links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+  .yields { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+  .yields span { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .fx-badge { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fx-badge.stale { background: var(--warn-bg); color: var(--warn-text); }
+  #addPreview { margin: 8px 0 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .price-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: -4px 0 10px; }
+  footer { margin-top: 20px; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Personal Investor</h1>
+    <p>Enter an amount and a risk level to see a suggested asset mix, live prices for your picks, and a range of possible outcomes over time.
+      All amounts are in <strong>Canadian dollars (CAD)</strong>.</p>
+  </header>
+
+  <div class="grid">
+    <!-- Inputs -->
+    <section class="panel sticky">
+      <h2>Your plan</h2>
+      <div class="field">
+        <label for="amount">Amount to invest (CAD)</label>
+        <div class="money"><span>C$</span><input id="amount" type="number" min="0" step="100" value="10000"></div>
+      </div>
+      <div class="field">
+        <label for="monthly">Regular contribution</label>
+        <div class="contrib-row">
+          <div class="money"><span>C$</span><input id="monthly" type="number" min="0" step="25" value="200"></div>
+          <select id="contribFreq" aria-label="Contribution frequency">
+            <option value="monthly">per month</option>
+            <option value="yearly">per year</option>
+          </select>
+        </div>
+        <div class="muted" id="contribNote" style="margin-top:4px"></div>
+      </div>
+      <div class="field">
+        <label for="years">Time horizon (years)</label>
+        <input id="years" type="number" min="1" max="50" value="20">
+      </div>
+      <div class="field">
+        <label>Risk level</label>
+        <div class="risk-buttons" id="riskButtons"></div>
+        <div class="risk-desc" id="riskDesc"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="inflation"> Show in today's dollars (2% inflation, the Bank of Canada target)</label>
+    </section>
+
+    <div class="stack">
+      <!-- Projection -->
+      <section class="panel">
+        <h2>Possible outcomes over time</h2>
+        <div class="stats">
+          <div class="stat"><div class="k">You put in</div><div class="v" id="sContrib">–</div></div>
+          <div class="stat"><div class="k">Weak markets (10th pct)</div><div class="v" id="sLow">–</div></div>
+          <div class="stat"><div class="k">Typical (median)</div><div class="v" id="sMid">–</div></div>
+          <div class="stat"><div class="k">Strong markets (90th pct)</div><div class="v" id="sHigh">–</div></div>
+        </div>
+        <div class="chart-wrap"><canvas id="growthChart" aria-label="Projected portfolio value over time"></canvas></div>
+        <p class="muted" id="projNote"></p>
+      </section>
+
+      <!-- Asset mix -->
+      <section class="panel">
+        <h2>Asset mix</h2>
+        <div class="mix-layout">
+          <div class="table-scroll">
+            <table id="mixTable">
+              <thead><tr><th>Asset</th><th>Mix %</th><th>Amount (C$)</th><th>Exp. return</th><th>Volatility</th><th class="left">Filled by</th></tr></thead>
+              <tbody></tbody>
+              <tfoot><tr><td>Total</td><td id="mixTotal"></td><td id="mixAmount"></td><td id="mixRet"></td><td id="mixVol"></td><td></td></tr></tfoot>
+            </table>
+          </div>
+          <div class="donut-wrap"><canvas id="mixChart" aria-label="Asset mix donut chart"></canvas></div>
+        </div>
+        <div class="row-actions">
+          <span class="muted" id="mixState"></span>
+          <button class="btn" id="resetMix">Reset to suggested mix</button>
+        </div>
+        <div class="warn hidden" id="mixWarn" style="margin-top:10px"></div>
+      </section>
+
+      <!-- Holdings -->
+      <section class="panel">
+        <h2>Your holdings</h2>
+        <div class="price-bar">
+          <span class="muted" id="priceStatus">Loading live prices…</span>
+          <span class="fx-badge hidden" id="fxBadge"></span>
+          <button class="btn small" id="refreshPrices">Refresh prices</button>
+        </div>
+        <div class="warn hidden" id="priceWarn" style="margin-bottom:10px"></div>
+        <p class="muted" style="margin-top:0">
+          Your holdings automatically fill each asset class's share of the mix. If individual stocks are 10% of your mix and you
+          add 1 share of Royal Bank, that share is the full 10%. Add 1 share of Shopify and the 10% is split by the CAD market value of each position. A class's holdings can't be worth more than its dollar target in the mix table, so share counts are limited to what fits.
+        </p>
+        <div class="table-scroll">
+          <table id="holdTable">
+            <thead><tr>
+              <th>Ticker</th><th class="left">Name</th><th class="left">Asset class</th><th>Shares</th><th>Live price (CAD)</th>
+              <th>Your value (CAD)</th><th title="This holding's share of your whole portfolio, filled from the mix">% of portfolio</th>
+              <th title="Dollars of your investment amount this holding represents">Target $</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td colspan="5">Total</td><td id="holdValue"></td><td id="holdPct"></td><td id="holdTarget"></td><td></td></tr></tfoot>
+          </table>
+        </div>
+        <p class="muted hidden" id="holdEmpty">No holdings yet. Add your own below or pick from the ideas and bonds sections.</p>
+        <div class="warn hidden" id="capMsg" style="margin-top:10px" role="status"></div>
+        <div class="warn hidden over-warn" id="overWarn" style="margin-top:10px">
+          <span id="overText"></span> <button class="btn small" id="trimBtn" type="button">Trim to fit targets</button>
+        </div>
+        <div class="warn hidden" id="holdWarn" style="margin-top:10px"></div>
+
+        <h3>Add your own</h3>
+        <form class="add-form" id="addForm" autocomplete="off">
+          <div><label for="addTicker">Ticker / coin</label><input id="addTicker" type="text" placeholder="RY, XEQT…" maxlength="12" required></div>
+          <div><label for="addName">Name (optional)</label><input id="addName" type="text" placeholder="Royal Bank of Canada"></div>
+          <div><label for="addType">Market</label>
+            <select id="addType">
+              <option value="tsx">TSX (Canada, CAD)</option>
+              <option value="us">US (USD → CAD)</option>
+              <option value="crypto">Crypto (CAD)</option>
+            </select></div>
+          <div><label for="addClass">Asset class</label><select id="addClass"></select></div>
+          <div><label for="addShares">Shares</label><input id="addShares" type="number" min="0" step="any" value="1"></div>
+          <button class="btn primary" type="submit">Add</button>
+        </form>
+        <p id="addPreview" class="hidden"></p>
+        <p class="muted" id="addMsg" style="margin:8px 0 0"></p>
+      </section>
+
+      <!-- Recommendations -->
+      <section class="panel">
+        <h2>Ideas for this risk level</h2>
+        <p class="muted" style="margin-top:-6px">Mostly Canadian-listed (TSX) funds and companies priced in CAD, plus a few US names and major cryptocurrencies. Examples to research, not personal advice.</p>
+        <div class="row-actions" style="margin:0 0 12px">
+          <span></span>
+          <button class="btn" id="addAllRecs">Add all to holdings</button>
+        </div>
+        <div class="cards" id="recs"></div>
+      </section>
+
+      <!-- Bonds -->
+      <section class="panel">
+        <h2>Bond &amp; GIC examples &amp; where to buy</h2>
+        <p class="muted" style="margin-top:-6px" id="bondNote">
+          In Canada, individual bonds and GICs are bought through a bank or an online brokerage. Bond ETFs trade on the TSX like stocks.
+          Consider holding them in a registered account:
+          <a href="https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account.html" target="_blank" rel="noopener noreferrer">TFSA</a>,
+          <a href="https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans.html" target="_blank" rel="noopener noreferrer">RRSP</a> or
+          <a href="https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account.html" target="_blank" rel="noopener noreferrer">FHSA</a>.
+        </p>
+        <div class="cards" id="bonds"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    Educational tool only — not financial advice. Projections use simplified long-run assumptions and a Monte Carlo simulation
+    (1,000 runs, monthly steps; yearly contributions are added at each year end); crypto is far more volatile than the gold/commodities assumption. All values are in Canadian dollars.
+    TSX prices come from TMX Money; US prices come from Nasdaq (may be delayed about 15 minutes) and are converted to CAD at a live
+    USD/CAD rate (Coinbase, refreshed every minute; the Bank of Canada's daily rate is used if that's unavailable), so their CAD value also moves with the exchange rate. Crypto prices come from CoinGecko in CAD;
+    Government of Canada yields come from the Bank of Canada. Taxes, fees and currency-conversion costs are not included. You can lose money.
+  </footer>
+</main>
+
+<script>
+// ---------- Assumptions ----------
+const ASSETS = [
+  { id: "cash",   name: "Cash / money market",        ret: 0.030, vol: 0.005, color: "--c-cash" },
+  { id: "bonds",  name: "Bonds",                      ret: 0.045, vol: 0.060, color: "--c-bonds" },
+  { id: "etf",    name: "Index ETFs",                 ret: 0.085, vol: 0.150, color: "--c-etf" },
+  { id: "stocks", name: "Individual stocks",          ret: 0.095, vol: 0.220, color: "--c-stocks" },
+  { id: "reit",   name: "Real estate (REITs)",        ret: 0.075, vol: 0.190, color: "--c-reit" },
+  { id: "gold",   name: "Gold, commodities & crypto", ret: 0.050, vol: 0.160, color: "--c-gold" },
+];
+// Correlations, same order as ASSETS
+const CORR = [
+  [1.00, 0.10, 0.00, 0.00, 0.00, 0.05],
+  [0.10, 1.00, 0.10, 0.05, 0.20, 0.25],
+  [0.00, 0.10, 1.00, 0.85, 0.60, 0.05],
+  [0.00, 0.05, 0.85, 1.00, 0.55, 0.05],
+  [0.00, 0.20, 0.60, 0.55, 1.00, 0.10],
+  [0.05, 0.25, 0.05, 0.05, 0.10, 1.00],
+];
+const RISK = [
+  { label: "Conservative", desc: "Protect what you have. Mostly bonds and cash, with some broad stock funds.",
+    mix: { cash: 20, bonds: 50, etf: 20, stocks: 0, reit: 5, gold: 5 } },
+  { label: "Cautious", desc: "Mostly stable assets, with a growing share in diversified stock funds.",
+    mix: { cash: 10, bonds: 40, etf: 35, stocks: 5, reit: 5, gold: 5 } },
+  { label: "Balanced", desc: "A middle path: roughly 60% growth assets and 40% stabilizers.",
+    mix: { cash: 5, bonds: 30, etf: 45, stocks: 10, reit: 5, gold: 5 } },
+  { label: "Growth", desc: "Mostly stocks for long-term growth; expect bigger swings along the way.",
+    mix: { cash: 5, bonds: 15, etf: 50, stocks: 20, reit: 5, gold: 5 } },
+  { label: "Aggressive", desc: "Maximum growth potential with large drawdowns possible. Best for long horizons.",
+    mix: { cash: 2, bonds: 5, etf: 50, stocks: 35, reit: 5, gold: 3 } },
+];
+// Ideas. r = [min, max] risk level where it fits.
+// k = market: "tsx" (TMX, CAD), "us" (Nasdaq, USD converted to CAD) or "crypto" (CoinGecko, CAD).
+const RECS = [
+  { t: "CASH", k: "tsx", n: "Global X High Interest Savings ETF", c: "cash", why: "Holds high-interest bank deposits; a cash-like place to park money.", r: [1, 5] },
+  { t: "ZAG",  k: "tsx", n: "BMO Aggregate Bond Index ETF",      c: "bonds", why: "Broad Canadian government and corporate bonds in one low-cost fund.", r: [1, 5] },
+  { t: "XSB",  k: "tsx", n: "iShares Core Canadian Short Term Bond Index ETF", c: "bonds", why: "Short-term bonds; smaller price swings when rates move.", r: [1, 2] },
+  { t: "XRB",  k: "tsx", n: "iShares Canadian Real Return Bond Index ETF", c: "bonds", why: "Inflation-linked Government of Canada bonds.", r: [1, 2] },
+  { t: "VBAL", k: "tsx", n: "Vanguard Balanced ETF Portfolio",   c: "etf", why: "All-in-one fund: about 60% stocks and 40% bonds, rebalanced for you.", r: [1, 3] },
+  { t: "VGRO", k: "tsx", n: "Vanguard Growth ETF Portfolio",     c: "etf", why: "All-in-one fund: about 80% stocks and 20% bonds.", r: [3, 4] },
+  { t: "XEQT", k: "tsx", n: "iShares Core Equity ETF Portfolio", c: "etf", why: "All-in-one, 100% stocks from Canada, the US and abroad.", r: [4, 5] },
+  { t: "XIC",  k: "tsx", n: "iShares Core S&P/TSX Capped Composite Index ETF", c: "etf", why: "The whole Canadian stock market in one fund.", r: [1, 5] },
+  { t: "VFV",  k: "tsx", n: "Vanguard S&P 500 Index ETF",        c: "etf", why: "The 500 largest US companies, bought in Canadian dollars on the TSX.", r: [2, 5] },
+  { t: "XEF",  k: "tsx", n: "iShares Core MSCI EAFE IMI Index ETF", c: "etf", why: "Developed markets outside North America (Europe, Japan, Australia).", r: [2, 5] },
+  { t: "RY",   k: "tsx", n: "Royal Bank of Canada",              c: "stocks", why: "Canada's largest bank, with a long dividend record.", r: [2, 4] },
+  { t: "TD",   k: "tsx", n: "Toronto-Dominion Bank",             c: "stocks", why: "Big-five bank with large Canadian and US retail operations.", r: [2, 4] },
+  { t: "ENB",  k: "tsx", n: "Enbridge",                          c: "stocks", why: "Pipeline and utility company known for a high dividend.", r: [2, 3] },
+  { t: "CNR",  k: "tsx", n: "Canadian National Railway",         c: "stocks", why: "Coast-to-coast railway; steady, essential business.", r: [2, 4] },
+  { t: "BN",   k: "tsx", n: "Brookfield Corporation",            c: "stocks", why: "Global owner of real assets: infrastructure, renewables and property.", r: [3, 5] },
+  { t: "SHOP", k: "tsx", n: "Shopify",                           c: "stocks", why: "Canadian e-commerce platform; high growth, high volatility.", r: [4, 5] },
+  { t: "CSU",  k: "tsx", n: "Constellation Software",            c: "stocks", why: "Buys and runs niche software companies; pricey per share.", r: [4, 5] },
+  { t: "MSFT", k: "us",  n: "Microsoft",                         c: "stocks", why: "US-listed. Diversified software and cloud leader (priced in USD).", r: [3, 5] },
+  { t: "NVDA", k: "us",  n: "NVIDIA",                            c: "stocks", why: "US-listed. AI chip leader; very volatile (priced in USD).", r: [5, 5] },
+  { t: "VRE",  k: "tsx", n: "Vanguard FTSE Canadian Capped REIT Index ETF", c: "reit", why: "Canadian real estate investment trusts in one fund.", r: [1, 5] },
+  { t: "ZRE",  k: "tsx", n: "BMO Equal Weight REITs Index ETF",  c: "reit", why: "Canadian REITs, equally weighted so no single REIT dominates.", r: [3, 5] },
+  { t: "CGL.C",k: "tsx", n: "iShares Gold Bullion ETF",          c: "gold", why: "Physical gold, priced in Canadian dollars.", r: [1, 5] },
+  { t: "XGD",  k: "tsx", n: "iShares S&P/TSX Global Gold Index ETF", c: "gold", why: "Gold mining companies; moves more than gold itself.", r: [3, 5] },
+  { t: "FBTC", k: "tsx", n: "Fidelity Advantage Bitcoin ETF",    c: "gold", why: "Bitcoin through a regular brokerage account, TFSA or RRSP.", r: [4, 5] },
+  { t: "BTC",  k: "crypto", n: "Bitcoin",                        c: "gold", why: "The largest cryptocurrency. Very volatile; size it small.", r: [4, 5] },
+  { t: "ETH",  k: "crypto", n: "Ethereum",                       c: "gold", why: "Second-largest crypto; powers many apps. Even more volatile.", r: [5, 5] },
+];
+// Canadian online brokerages (all verified links)
+const BROKERS = [
+  { label: "Questrade", url: "https://www.questrade.com/self-directed-investing/investment-types/bonds" },
+  { label: "Wealthsimple", url: "https://www.wealthsimple.com/en-ca" },
+  { label: "RBC Direct Investing", url: "https://www.rbcdirectinvesting.com/" },
+  { label: "TD Direct Investing", url: "https://www.td.com/ca/en/investing/direct-investing" },
+  { label: "Qtrade", url: "https://www.qtrade.ca/" },
+];
+const BOC_BONDS = { label: "Bank of Canada yields", url: "https://www.bankofcanada.ca/rates/interest-rates/canadian-bonds/" };
+const BONDS = [
+  { name: "GICs", tag: "Guaranteed", term: "30 days to 5 years",
+    desc: "Guaranteed Investment Certificates from banks and credit unions: a fixed rate and your principal back at maturity. Eligible GICs are CDIC-insured up to $100,000 per category per bank.",
+    rateNote: "Rates vary by bank; compare at your broker or bank",
+    buy: [{ label: "Questrade GICs", url: "https://www.questrade.com/self-directed-investing/investment-types/gics" },
+          ...BROKERS.slice(1), { label: "CDIC coverage", url: "https://www.cdic.ca/your-coverage/" }] },
+  { name: "Government of Canada T-bills", tag: "Federal", term: "1 month to 1 year",
+    desc: "Short-term federal debt sold at a discount; about as safe as it gets in Canada.",
+    yields: ["1 Mo", "3 Mo", "6 Mo", "1 Yr"], dateKey: "billDate",
+    buy: [...BROKERS, BOC_BONDS],
+    etf: { t: "TBIL", n: "Harvest Canadian T-Bill ETF", c: "cash" } },
+  { name: "Government of Canada bonds", tag: "Federal", term: "2 to 30 years",
+    desc: "Pay interest twice a year. Prices rise when rates fall and drop when rates rise if sold before maturity.",
+    yields: ["2 Yr", "5 Yr", "10 Yr", "Long"], dateKey: "bondDate",
+    buy: [...BROKERS, BOC_BONDS],
+    etf: { t: "XGB", n: "iShares Core Canadian Government Bond Index ETF", c: "bonds" } },
+  { name: "Provincial bonds", tag: "Provincial", term: "1 to 30 years",
+    desc: "Issued by provinces such as Ontario and Quebec. Usually yield a bit more than federal bonds of the same term.",
+    rateNote: "Typically a little above the federal yields shown",
+    buy: BROKERS },
+  { name: "Real return bonds", tag: "Inflation-linked", term: "Long-term",
+    desc: "Government of Canada bonds whose principal grows with inflation (CPI). No new ones are issued, but existing bonds still trade.",
+    yields: ["Real return"], dateKey: "bondDate", yieldSuffix: " + inflation",
+    buy: [...BROKERS, BOC_BONDS],
+    etf: { t: "XRB", n: "iShares Canadian Real Return Bond Index ETF", c: "bonds" } },
+  { name: "Corporate bonds", tag: "Companies", term: "1 to 30 years",
+    desc: "Loans to Canadian companies. Higher yields than government bonds, with the risk that the company can't pay.",
+    buy: BROKERS,
+    etf: { t: "XCB", n: "iShares Core Canadian Corporate Bond Index ETF", c: "bonds" } },
+  { name: "Total bond market funds", tag: "Bond ETF", term: "Mixed",
+    desc: "Hundreds of federal, provincial and corporate bonds in a single fund; the simplest way to own Canadian bonds.",
+    buy: [{ label: "XBB at iShares", url: "https://www.blackrock.com/ca/investors/en/products/239493/ishares-canadian-universe-bond-index-etf" }, ...BROKERS.slice(0, 2)],
+    etf: { t: "ZAG", n: "BMO Aggregate Bond Index ETF", c: "bonds" } },
+];
+
+// ---------- State ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("pi:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("pi:" + k, JSON.stringify(v)); } catch {} },
+};
+const state = {
+  amount: store.get("amount", 10000),
+  monthly: store.get("monthly", 200),          // contribution amount, per contribFreq
+  contribFreq: store.get("contribFreq", "monthly"),
+  years: store.get("years", 20),
+  risk: store.get("risk", 3),
+  inflation: store.get("inflation", false),
+  customMix: store.get("customMix", null),
+  // Holding: { t: ticker, n: name, c: asset class id, k: market "tsx" | "us" | "crypto", s: shares }
+  // Older saves used k: "stock" for US listings
+  holdings: store.get("holdings", []).map((h) => ({ t: h.t, n: h.n || "", c: h.c, k: !h.k || h.k === "stock" ? "us" : h.k, s: h.s ?? h.w ?? 1 })),
+};
+// Bring any previously saved custom mix up to 100% using cash
+if (state.customMix) {
+  const nonCash = ASSETS.filter((a) => a.id !== "cash").reduce((s, a) => s + (Number(state.customMix[a.id]) || 0), 0);
+  if (nonCash > 100) state.customMix = null;
+  else balanceMix(state.customMix);
+}
+function save() { for (const k of Object.keys(state)) store.set(k, state[k]); }
+
+const prices = {};        // key -> quote or { error }
+let yields = null;        // Bank of Canada { yields, billDate, bondDate } or { error }
+let fx = null;            // { rate, date } USD -> CAD
+let priceError = null;
+let pricesUpdated = null;
+
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt$ = (x) => "$" + Math.round(x).toLocaleString();
+const fmtPrice = (x, prefix = "$") => prefix + x.toLocaleString("en-CA", { minimumFractionDigits: x < 1 ? 4 : 2, maximumFractionDigits: x < 1 ? 6 : 2 });
+const fmtShort = (x) => Math.abs(x) >= 1e6 ? "$" + (x / 1e6).toFixed(2) + "M" : Math.abs(x) >= 1e4 ? "$" + (x / 1e3).toFixed(0) + "k" : fmt$(x);
+const pct = (x, d = 1) => (x * 100).toFixed(d) + "%";
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const assetById = (id) => ASSETS.find((a) => a.id === id);
+const priceKey = (h) => (h.k || "tsx") + ":" + h.t;
+const MARKET_LABEL = { tsx: "TSX", us: "US", crypto: "crypto" };
+
+// A function declaration (hoisted) because the saved-mix check at startup calls balanceMix early
+function round2(x) { return Math.round(x * 100) / 100; }
+
+// Cash is the balancing slice: it absorbs every change so the mix always totals 100%.
+// An increase larger than the cash available is capped at what cash can give up.
+function balanceMix(mix, changedId) {
+  const nonCash = () => ASSETS.filter((a) => a.id !== "cash").reduce((s, a) => s + (Number(mix[a.id]) || 0), 0);
+  const excess = nonCash() - 100;
+  if (excess > 0 && changedId) mix[changedId] = round2(Math.max(0, (Number(mix[changedId]) || 0) - excess));
+  mix.cash = round2(100 - nonCash());
+  return mix;
+}
+
+function currentMix() { return state.customMix || RISK[state.risk - 1].mix; }
+function mixTotal(mix) { return ASSETS.reduce((s, a) => s + (Number(mix[a.id]) || 0), 0); }
+
+function portfolioStats(mix) {
+  const total = mixTotal(mix) || 1;
+  const w = ASSETS.map((a) => (Number(mix[a.id]) || 0) / total);
+  const ret = w.reduce((s, wi, i) => s + wi * ASSETS[i].ret, 0);
+  let variance = 0;
+  for (let i = 0; i < w.length; i++)
+    for (let j = 0; j < w.length; j++)
+      variance += w[i] * w[j] * ASSETS[i].vol * ASSETS[j].vol * CORR[i][j];
+  return { ret, vol: Math.sqrt(variance) };
+}
+
+// Each asset class's mix % is filled by its holdings, split by market value (shares x live price).
+// Until prices arrive for a class, it is split by share count instead.
+function allocations() {
+  const mix = currentMix();
+  const total = mixTotal(mix) || 1;
+  const rows = state.holdings.map((h, i) => {
+    const q = prices[priceKey(h)];
+    const price = q && typeof q.priceCad === "number" ? q.priceCad : null;
+    return { ...h, i, price, value: price != null ? price * (Number(h.s) || 0) : null };
+  });
+  const byClass = {};
+  for (const r of rows) (byClass[r.c] ||= []).push(r);
+  for (const [c, list] of Object.entries(byClass)) {
+    const priced = list.some((r) => r.value != null);
+    for (const r of list) r.weight = priced ? (r.value || 0) : (Number(r.s) || 0);
+    const sum = list.reduce((s, r) => s + r.weight, 0);
+    const classPct = (Number(mix[c]) || 0) / total * 100;
+    for (const r of list) {
+      r.pct = sum > 0 ? classPct * r.weight / sum : 0;
+      r.target = state.amount * r.pct / 100;
+      r.byShares = !priced;
+    }
+  }
+  return { rows, byClass };
+}
+
+// ---------- Holding caps ----------
+// A class's holdings can't be worth more than the class's dollar target (amount x mix %).
+function classBudget(c) {
+  const mix = currentMix();
+  return state.amount * (Number(mix[c]) || 0) / (mixTotal(mix) || 1);
+}
+function cadPrice(h) {
+  const q = prices[priceKey(h)];
+  return q && typeof q.priceCad === "number" ? q.priceCad : null;
+}
+// Dollars still free in class c, ignoring the holding at index `except` (the one being edited).
+function classRoom(c, except = -1) {
+  const used = state.holdings.reduce((sum, h, i) =>
+    i === except || h.c !== c ? sum : sum + (cadPrice(h) ?? 0) * (Number(h.s) || 0), 0);
+  return Math.max(0, classBudget(c) - used);
+}
+// Most shares of h that fit: whole shares for stocks/ETFs, up to 6 decimals for crypto. Infinity if no price yet.
+function maxShares(h, except = -1) {
+  const price = cadPrice(h);
+  if (price == null || price <= 0) return Infinity;
+  const raw = classRoom(h.c, except) / price + 1e-9;
+  return h.k === "crypto" ? Math.floor(raw * 1e6) / 1e6 : Math.floor(raw);
+}
+// Clamp wanted shares to what fits; returns { s, capped, note }.
+function fitShares(h, wanted, except = -1) {
+  const max = maxShares(h, except);
+  if (wanted <= max) return { s: wanted, capped: false };
+  const room = classRoom(h.c, except), price = cadPrice(h);
+  const cls = assetById(h.c).name;
+  const note = max > 0
+    ? `${h.t} was limited to ${max} ${h.k === "crypto" ? "" : max === 1 ? "share " : "shares "}(${fmt$(max * price)}) so ${cls} stays within its ${fmt$(classBudget(h.c))} target.`
+    : `Not enough room for ${h.t}: one ${h.k === "crypto" ? "coin" : "share"} costs ${fmtPrice(price)}, but only ${fmt$(room)} is left of the ${fmt$(classBudget(h.c))} ${cls} target. Raise its mix % or amount, or lower other ${cls} holdings.`;
+  return { s: max, capped: true, note };
+}
+function showCapNotes(notes) {
+  const el = $("capMsg");
+  el.textContent = notes.join(" ");
+  el.classList.toggle("hidden", notes.length === 0);
+}
+// Holdings added before their price was known get checked once prices arrive.
+function enforcePendingCaps() {
+  const notes = [];
+  state.holdings.forEach((h, i) => {
+    if (!h.pending || cadPrice(h) == null) return;
+    delete h.pending;
+    const r = fitShares(h, Number(h.s) || 0, i);
+    h.s = r.s;
+    if (r.capped) notes.push(r.note);
+  });
+  if (notes.length) { showCapNotes(notes); save(); }
+}
+// Scale down every over-target class so it fits again (after a mix, amount or price change).
+function trimToFit() {
+  for (const a of ASSETS) {
+    const list = state.holdings.map((h, i) => ({ h, i })).filter(({ h }) => h.c === a.id && cadPrice(h) != null);
+    const value = list.reduce((s, { h }) => s + cadPrice(h) * (Number(h.s) || 0), 0);
+    const budget = classBudget(a.id);
+    if (value <= budget + 0.005) continue;
+    const factor = budget / value;
+    for (const { h } of list) {
+      const scaled = (Number(h.s) || 0) * factor;
+      h.s = h.k === "crypto" ? Math.floor(scaled * 1e6) / 1e6 : Math.floor(scaled + 1e-9);
+    }
+  }
+  showCapNotes([]);
+  renderAll();
+}
+
+// ---------- Live prices ----------
+async function refreshPrices() {
+  const keys = new Set(state.holdings.map(priceKey));
+  for (const r of visibleRecs()) keys.add(priceKey(r));
+  for (const b of BONDS) if (b.etf) keys.add(priceKey({ t: b.etf.t, k: "tsx" }));
+  $("refreshPrices").disabled = true;
+  $("priceStatus").textContent = "Updating live prices…";
+  try {
+    const res = await fetch("/api/quotes?symbols=" + encodeURIComponent([...keys].join(",")));
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    Object.assign(prices, data.quotes);
+    fx = data.fx && !data.fx.error ? data.fx : fx;
+    priceError = null;
+    pricesUpdated = new Date();
+    enforcePendingCaps();
+  } catch (err) {
+    priceError = err;
+  }
+  $("refreshPrices").disabled = false;
+  renderPriceDependent();
+}
+async function loadYields() {
+  try {
+    const res = await fetch("/api/yields");
+    yields = await res.json();
+  } catch { yields = { error: "unavailable" }; }
+  renderBonds();
+}
+function priceHtml(key, compact = false) {
+  const q = prices[key];
+  if (!q) return priceError ? `<span class="muted">n/a</span>` : `<span class="muted">…</span>`;
+  if (q.error) return `<span class="muted" title="${escapeHtml(q.error)}">not found</span>`;
+  if (typeof q.priceCad !== "number") return `<span class="muted" title="No USD/CAD rate">${fmtPrice(q.price, "US$")}</span>`;
+  const ch = typeof q.changePct === "number"
+    ? `<span class="${q.changePct >= 0 ? "pos" : "neg"}">${q.changePct >= 0 ? "+" : ""}${q.changePct.toFixed(2)}%</span>` : "";
+  // US listings: show the CAD price, with the original USD price underneath
+  const usd = q.currency === "USD"
+    ? `<span class="muted" title="${fmtPrice(q.price, "US$")} × ${q.fxRate.toFixed(4)} USD/CAD = ${fmtPrice(q.priceCad, "C$")}">${fmtPrice(q.price, "US$")}</span> ` : "";
+  return compact ? `${fmtPrice(q.priceCad)} ${usd}${ch}` : `${fmtPrice(q.priceCad)}<span class="sub">${usd}${ch}</span>`;
+}
+
+// ---------- Simulation ----------
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// Contributions land at the end of each month ("monthly") or the end of each year ("yearly").
+function simulate({ amount, contribution, freq, years, ret, vol, inflation }) {
+  const yearly = freq === "yearly";
+  const perYear = yearly ? contribution : contribution * 12;
+  const runs = 1000, months = years * 12;
+  const rand = mulberry32(42);
+  const gauss = () => { let u = 0; while (u === 0) u = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand()); };
+  const mu = (Math.log(1 + ret) - (vol * vol) / 2) / 12;
+  const sd = vol / Math.sqrt(12);
+  const byYear = Array.from({ length: years + 1 }, () => new Float64Array(runs));
+  for (let r = 0; r < runs; r++) {
+    let v = amount;
+    byYear[0][r] = v;
+    for (let m = 1; m <= months; m++) {
+      v *= Math.exp(mu + sd * gauss());
+      if (!yearly || m % 12 === 0) v += contribution;
+      if (m % 12 === 0) byYear[m / 12][r] = v;
+    }
+  }
+  const q = (arr, p) => arr[Math.min(arr.length - 1, Math.floor(p * arr.length))];
+  const out = { p10: [], p25: [], p50: [], p75: [], p90: [], contrib: [], lossProb: 0 };
+  for (let y = 0; y <= years; y++) {
+    const sorted = Array.from(byYear[y]).sort((a, b) => a - b);
+    const defl = inflation ? Math.pow(1.02, y) : 1;
+    out.p10.push(q(sorted, 0.10) / defl);
+    out.p25.push(q(sorted, 0.25) / defl);
+    out.p50.push(q(sorted, 0.50) / defl);
+    out.p75.push(q(sorted, 0.75) / defl);
+    out.p90.push(q(sorted, 0.90) / defl);
+    out.contrib.push(amount + perYear * y);
+  }
+  const finalContrib = out.contrib[years];
+  out.lossProb = Array.from(byYear[years]).filter((v) => v < finalContrib).length / runs;
+  return out;
+}
+
+// ---------- Charts ----------
+let growthChart, mixChart;
+function hexA(hex, a) {
+  const h = hex.replace("#", "");
+  const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function renderGrowth(sim) {
+  const accent = css("--accent"), muted = css("--muted"), border = css("--border"), text = css("--text");
+  const labels = sim.p50.map((_, i) => (i === 0 ? "Now" : "Yr " + i));
+  const data = {
+    labels,
+    datasets: [
+      { label: "90th percentile", data: sim.p90, borderColor: hexA(accent, 0.35), backgroundColor: hexA(accent, 0.10), fill: "+4", pointRadius: 0, borderWidth: 1, tension: 0.25 },
+      { label: "75th percentile", data: sim.p75, borderColor: "transparent", backgroundColor: hexA(accent, 0.16), fill: "+2", pointRadius: 0, tension: 0.25 },
+      { label: "Median", data: sim.p50, borderColor: accent, backgroundColor: accent, fill: false, pointRadius: 0, borderWidth: 2.5, tension: 0.25 },
+      { label: "25th percentile", data: sim.p25, borderColor: "transparent", fill: false, pointRadius: 0, tension: 0.25 },
+      { label: "10th percentile", data: sim.p10, borderColor: hexA(accent, 0.35), fill: false, pointRadius: 0, borderWidth: 1, tension: 0.25 },
+      { label: "Total contributed", data: sim.contrib, borderColor: muted, borderDash: [5, 4], fill: false, pointRadius: 0, borderWidth: 1.5 },
+    ],
+  };
+  const options = {
+    responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { labels: { color: text, boxWidth: 12, filter: (i) => !["75th percentile", "25th percentile"].includes(i.text) } },
+      tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt$(c.parsed.y)}` } },
+    },
+    scales: {
+      x: { ticks: { color: muted, maxTicksLimit: 11 }, grid: { display: false } },
+      y: { ticks: { color: muted, callback: (v) => fmtShort(v) }, grid: { color: border } },
+    },
+  };
+  if (growthChart) { growthChart.data = data; growthChart.options = options; growthChart.update(); }
+  else growthChart = new Chart($("growthChart"), { type: "line", data, options });
+}
+function renderMixChart(mix) {
+  const data = {
+    labels: ASSETS.map((a) => a.name),
+    datasets: [{ data: ASSETS.map((a) => Number(mix[a.id]) || 0), backgroundColor: ASSETS.map((a) => css(a.color)), borderColor: css("--panel"), borderWidth: 2 }],
+  };
+  const options = { responsive: true, maintainAspectRatio: false, cutout: "62%", plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.label}: ${c.parsed}%` } } } };
+  if (mixChart) { mixChart.data = data; mixChart.update(); }
+  else mixChart = new Chart($("mixChart"), { type: "doughnut", data, options });
+}
+
+// ---------- Rendering ----------
+function renderRiskButtons() {
+  $("riskButtons").innerHTML = RISK.map((r, i) =>
+    `<button type="button" data-risk="${i + 1}" class="${state.risk === i + 1 ? "active" : ""}" title="${r.label}">${i + 1}</button>`).join("");
+  const r = RISK[state.risk - 1];
+  $("riskDesc").innerHTML = `<strong>${r.label}.</strong> ${r.desc}`;
+}
+
+function renderMixTable() {
+  const mix = currentMix();
+  const total = mixTotal(mix);
+  const { byClass } = allocations();
+  $("mixTable").querySelector("tbody").innerHTML = ASSETS.map((a) => {
+    const p = Number(mix[a.id]) || 0;
+    const held = (byClass[a.id] || []).slice().sort((x, y) => y.pct - x.pct);
+    const filled = held.length
+      ? held.slice(0, 3).map((h) => `${escapeHtml(h.t)} ${h.pct.toFixed(1)}%`).join(", ") + (held.length > 3 ? ` +${held.length - 3} more` : "")
+      : `<span class="muted">—</span>`;
+    return `<tr>
+      <td><span class="swatch" style="background:${css(a.color)}"></span>${a.name}</td>
+      <td><input type="number" min="0" max="100" step="any" data-asset="${a.id}" value="${p}" aria-label="${a.name} percent"
+        ${a.id === "cash" ? `readonly tabindex="-1" title="Cash adjusts automatically to keep the mix at 100%"` : ""}></td>
+      <td><input class="amount-input" type="number" min="0" step="any" data-amount="${a.id}" value="${Math.round(state.amount * p / 100)}"
+        aria-label="${a.name} amount in CAD"
+        ${a.id === "cash" ? `readonly tabindex="-1" title="Cash adjusts automatically to keep the mix at 100%"` : state.amount > 0 ? "" : "disabled"}></td>
+      <td>${pct(a.ret)}</td>
+      <td>${pct(a.vol)}</td>
+      <td class="left wrap">${filled}</td>
+    </tr>`;
+  }).join("");
+  const s = portfolioStats(mix);
+  const totalOk = Math.abs(total - 100) < 0.005;
+  $("mixTotal").textContent = round2(total) + "%";
+  $("mixTotal").className = totalOk ? "" : "neg";
+  $("mixAmount").textContent = fmt$(state.amount * total / 100);
+  $("mixRet").textContent = pct(s.ret);
+  $("mixVol").textContent = pct(s.vol);
+  $("mixState").textContent = state.customMix
+    ? "Using your custom mix. Cash adjusts automatically to keep the total at 100%."
+    : `Using the suggested ${RISK[state.risk - 1].label.toLowerCase()} mix. Edit any % or dollar amount to customize; cash adjusts to keep the total at 100%.`;
+  $("resetMix").disabled = !state.customMix;
+  const warn = $("mixWarn");
+  if (!totalOk) { warn.textContent = `Your mix adds up to ${round2(total)}%. The projection treats it as if scaled to 100%.`; warn.classList.remove("hidden"); }
+  else warn.classList.add("hidden");
+  renderMixChart(mix);
+}
+
+function renderHoldings() {
+  const mix = currentMix();
+  const { rows, byClass } = allocations();
+  const order = (c) => ASSETS.findIndex((x) => x.id === c);
+  rows.sort((a, b) => order(a.c) - order(b.c) || b.pct - a.pct);
+  // Classes whose holdings are worth more than their target (e.g. after lowering the mix or a price jump)
+  const over = {};
+  for (const [c, list] of Object.entries(byClass)) {
+    const value = list.reduce((s, r) => s + (r.value || 0), 0);
+    if (value > classBudget(c) + 0.5) over[c] = value;
+  }
+  $("holdTable").querySelector("tbody").innerHTML = rows.map((h) => {
+    const a = assetById(h.c);
+    return `<tr>
+      <td><strong>${escapeHtml(h.t)}</strong> <span class="tag">${MARKET_LABEL[h.k] || h.k}</span></td>
+      <td class="left wrap">${escapeHtml(h.n || prices[priceKey(h)]?.name || "")}</td>
+      <td class="left"><span class="swatch" style="background:${css(a.color)}"></span>${a.name}</td>
+      <td><input type="number" min="0" step="any" value="${h.s}" data-hold="${h.i}" aria-label="${escapeHtml(h.t)} shares"></td>
+      <td>${priceHtml(priceKey(h))}</td>
+      <td class="${over[h.c] ? "neg" : ""}">${h.value != null ? fmt$(h.value) : `<span class="muted">—</span>`}</td>
+      <td><strong>${h.pct.toFixed(1)}%</strong>${h.byShares ? `<span class="sub muted">by share count</span>` : ""}</td>
+      <td>${fmt$(h.target)}</td>
+      <td><button class="btn small" data-remove="${h.i}" aria-label="Remove ${escapeHtml(h.t)}">Remove</button></td>
+    </tr>`;
+  }).join("");
+  const empty = rows.length === 0;
+  $("holdTable").classList.toggle("hidden", empty);
+  $("holdEmpty").classList.toggle("hidden", !empty);
+  $("holdValue").textContent = fmt$(rows.reduce((s, r) => s + (r.value || 0), 0));
+  $("holdPct").textContent = rows.reduce((s, r) => s + r.pct, 0).toFixed(1) + "%";
+  $("holdTarget").textContent = fmt$(rows.reduce((s, r) => s + r.target, 0));
+
+  const notes = [];
+  const unfilled = ASSETS.filter((a) => (Number(mix[a.id]) || 0) > 0 && !byClass[a.id]);
+  if (!empty && unfilled.length)
+    notes.push(`Not filled by any holding yet: ${unfilled.map((a) => `${a.name} (${Number(mix[a.id])}%)`).join(", ")}.`);
+  const zero = ASSETS.filter((a) => byClass[a.id] && !(Number(mix[a.id]) > 0));
+  if (zero.length)
+    notes.push(`${zero.map((a) => a.name).join(", ")} ${zero.length > 1 ? "have" : "has"} 0% in your mix, so those holdings get 0%. Raise it in the mix table to include them.`);
+  const missing = rows.filter((r) => prices[priceKey(r)]?.error).map((r) => r.t);
+  if (missing.length)
+    notes.push(`No price found for ${missing.join(", ")}. Check the ticker${missing.length > 1 ? "s" : ""} and the market (TSX, US or Crypto).`);
+  const w = $("holdWarn");
+  w.textContent = notes.join(" ");
+  w.classList.toggle("hidden", notes.length === 0);
+
+  const overIds = Object.keys(over);
+  $("overWarn").classList.toggle("hidden", overIds.length === 0);
+  $("overText").textContent = overIds.map((c) =>
+    `${assetById(c).name} holdings are worth ${fmt$(over[c])}, above the ${fmt$(classBudget(c))} target.`).join(" ");
+}
+
+function renderFxBadge() {
+  const b = $("fxBadge");
+  b.classList.toggle("hidden", !fx);
+  if (!fx) return;
+  b.classList.toggle("stale", !fx.live);
+  b.textContent = `US$1 = C$${fx.rate.toFixed(4)} · ${fx.live ? "live" : "daily rate"}`;
+  b.title = fx.live
+    ? `Live USD/CAD rate from ${fx.source}, ${fx.asOf}. US prices are converted to CAD with this rate every minute.`
+    : `Live rate unavailable; using the ${fx.source} (${fx.asOf}).`;
+}
+function renderPriceStatus() {
+  renderFxBadge();
+  const warn = $("priceWarn");
+  if (priceError) {
+    $("priceStatus").textContent = "Live prices unavailable.";
+    warn.innerHTML = location.protocol === "file:"
+      ? `Live prices need the local server. Start the app with <code>uv run personal-investor</code> instead of opening the HTML file directly.`
+      : `Couldn't reach the price service (${escapeHtml(priceError.message)}). Check your internet connection and try Refresh.`;
+    warn.classList.remove("hidden");
+  } else {
+    warn.classList.add("hidden");
+    if (pricesUpdated)
+      $("priceStatus").textContent = `All prices in CAD · updated ${pricesUpdated.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}` +
+        (fx ? "" : " · USD/CAD rate unavailable") +
+        ` · TSX via TMX, US via Nasdaq (may be delayed ~15 min), crypto via CoinGecko · refreshes every minute`;
+  }
+}
+
+function visibleRecs() {
+  const mix = currentMix();
+  return RECS.filter((r) => state.risk >= r.r[0] && state.risk <= r.r[1] && (Number(mix[r.c]) || 0) > 0);
+}
+function hasHolding(t, k = "tsx") { return state.holdings.some((h) => h.t === t && h.k === k); }
+
+function renderRecs() {
+  const list = visibleRecs();
+  $("recs").innerHTML = list.map((r) => {
+    const has = hasHolding(r.t, r.k);
+    return `<div class="card">
+      <div class="top"><span class="ticker">${r.t}</span><span class="tag">${r.k === "crypto" ? "Crypto" : `${MARKET_LABEL[r.k]} · ${assetById(r.c).name}`}</span></div>
+      <div class="muted">${r.n}</div>
+      <div class="price">${priceHtml(priceKey({ t: r.t, k: r.k }), true)}</div>
+      <div class="why">${r.why}</div>
+      <div><button class="btn small ${has ? "" : "primary"}" data-rec="${r.t}" ${has ? "disabled" : ""}>${has ? "Added" : "Add 1 share"}</button></div>
+    </div>`;
+  }).join("");
+  $("addAllRecs").disabled = list.every((r) => hasHolding(r.t, r.k));
+}
+
+function renderBonds() {
+  const y = yields && !yields.error ? yields.yields : null;
+  $("bonds").innerHTML = BONDS.map((b, i) => {
+    let rate = "";
+    if (b.yields) {
+      rate = y
+        ? `<div class="yields">${b.yields.filter((k) => y[k] != null).map((k) => `<span>${k}: <strong>${y[k].toFixed(2)}%</strong>${b.yieldSuffix || ""}</span>`).join("")}</div>
+           <span class="sub muted">Government of Canada yields, Bank of Canada, ${escapeHtml(yields[b.dateKey] || "")}</span>`
+        : `<span class="sub muted">${yields ? "Live yields unavailable" : "Loading yields…"}</span>`;
+    } else if (b.rateNote) {
+      rate = `<span class="sub muted">${b.rateNote}</span>`;
+    }
+    const etf = b.etf
+      ? `<div class="price">TSX fund: <strong>${b.etf.t}</strong> ${priceHtml(priceKey({ t: b.etf.t, k: "tsx" }), true)}
+           ${b.etf.url ? ` · <a href="${b.etf.url}" target="_blank" rel="noopener noreferrer">fund page</a>` : ""}</div>` : "";
+    const has = b.etf && hasHolding(b.etf.t, "tsx");
+    return `<div class="card">
+      <div class="top"><span class="ticker">${b.name}</span><span class="tag">${b.tag}</span></div>
+      <div class="muted">Term: ${b.term}</div>
+      ${rate}
+      <div class="why">${b.desc}</div>
+      ${etf}
+      <div class="links">${b.buy.map((l) => `<a class="btn small" href="${l.url}" target="_blank" rel="noopener noreferrer">${l.label} ↗</a>`).join("")}</div>
+      ${b.etf ? `<div><button class="btn small ${has ? "" : "primary"}" data-bond="${i}" ${has ? "disabled" : ""}>${has ? `${b.etf.t} added` : `Add ${b.etf.t} to holdings`}</button></div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function renderProjection() {
+  const s = portfolioStats(currentMix());
+  const years = Math.max(1, Math.min(50, Math.round(state.years) || 1));
+  const sim = simulate({ amount: state.amount, contribution: state.monthly, freq: state.contribFreq, years, ret: s.ret, vol: s.vol, inflation: state.inflation });
+  $("sContrib").textContent = fmtShort(sim.contrib[years]);
+  $("sLow").textContent = fmtShort(sim.p10[years]);
+  $("sMid").textContent = fmtShort(sim.p50[years]);
+  $("sHigh").textContent = fmtShort(sim.p90[years]);
+  $("projNote").innerHTML =
+    `Expected return ${pct(s.ret)} / yr, volatility ${pct(s.vol)}. ` +
+    `In ${years} year${years > 1 ? "s" : ""}, about <strong>${Math.round(sim.lossProb * 100)}%</strong> of simulated outcomes ended below what you put in` +
+    (state.inflation ? " (before adjusting for inflation)." : ".") +
+    ` The shaded bands show the middle 50% and 80% of outcomes.`;
+  renderGrowth(sim);
+}
+
+function renderPriceDependent() {
+  renderPriceStatus();
+  renderMixTable();
+  renderHoldings();
+  renderRecs();
+  renderBonds();
+}
+function renderAll() {
+  renderRiskButtons();
+  renderPriceDependent();
+  renderProjection();
+  save();
+}
+
+// ---------- Events ----------
+function bindNumber(id, key, min = 0) {
+  const el = $(id);
+  el.value = state[key];
+  el.addEventListener("input", () => {
+    const v = Number(el.value);
+    if (!Number.isFinite(v) || v < min) return;
+    state[key] = v;
+    renderMixTable(); renderHoldings(); renderProjection(); save();
+  });
+}
+bindNumber("amount", "amount");
+bindNumber("monthly", "monthly");
+function renderContribNote() {
+  const perYear = state.contribFreq === "yearly" ? state.monthly : state.monthly * 12;
+  $("contribNote").textContent = state.monthly > 0
+    ? `${fmt$(perYear)} per year${state.contribFreq === "yearly" ? ", added at the end of each year" : ` (${fmt$(state.monthly)} each month)`}`
+    : "No regular contributions";
+}
+$("contribFreq").value = state.contribFreq;
+$("contribFreq").addEventListener("change", (e) => { state.contribFreq = e.target.value; renderContribNote(); renderProjection(); save(); });
+$("monthly").addEventListener("input", renderContribNote);
+renderContribNote();
+bindNumber("years", "years", 1);
+$("inflation").checked = state.inflation;
+$("inflation").addEventListener("change", (e) => { state.inflation = e.target.checked; renderProjection(); save(); });
+
+$("riskButtons").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-risk]");
+  if (!b) return;
+  state.risk = Number(b.dataset.risk);
+  state.customMix = null;
+  renderAll();
+  refreshPrices();
+});
+
+// Edit either the % or the dollar amount; both set the same mix %, and cash absorbs the difference.
+$("mixTable").addEventListener("change", (e) => {
+  const inp = e.target.closest("input[data-asset], input[data-amount]");
+  if (!inp || inp.readOnly) return;
+  const id = inp.dataset.asset || inp.dataset.amount;
+  const v = Math.max(0, Number(inp.value) || 0);
+  const wantedPct = inp.dataset.amount ? (state.amount > 0 ? v / state.amount * 100 : 0) : v;
+  const mix = { ...currentMix() };
+  mix[id] = round2(Math.min(100, wantedPct));
+  const wanted = mix[id];
+  state.customMix = balanceMix(mix, id);
+  renderAll();
+  if (state.customMix[id] < wanted) {
+    const got = state.customMix[id];
+    $("mixWarn").textContent = `${assetById(id).name} is capped at ${got}% (${fmt$(state.amount * got / 100)}) because there's no cash left to move. Lower another asset first to free up room.`;
+    $("mixWarn").classList.remove("hidden");
+  }
+});
+$("resetMix").addEventListener("click", () => { state.customMix = null; renderAll(); });
+
+$("addClass").innerHTML = ASSETS.map((a) => `<option value="${a.id}" ${a.id === "stocks" ? "selected" : ""}>${a.name}</option>`).join("");
+let classBeforeCrypto = "stocks";
+$("addType").addEventListener("change", () => {
+  const crypto = $("addType").value === "crypto";
+  if (crypto && !$("addClass").disabled) { classBeforeCrypto = $("addClass").value; $("addClass").value = "gold"; }
+  if (!crypto && $("addClass").disabled) $("addClass").value = classBeforeCrypto;
+  $("addClass").disabled = crypto;
+  $("addTicker").placeholder = { tsx: "RY, XEQT…", us: "AAPL, MSFT…", crypto: "BTC, ETH, SOL…" }[$("addType").value];
+});
+// Live cost preview while typing a ticker: for US listings, shows the USD price converted to CAD.
+let previewTimer = null, previewSeq = 0;
+function normalizedTicker(k) {
+  return $("addTicker").value.trim().toUpperCase().replace(/^\$/, "")
+    .replace(/-(USD|CAD)$/, k === "crypto" ? "" : "-$1").replace(/\.(TO|TSX)$/, k === "tsx" ? "" : ".$1")
+    .replace(/[^A-Z0-9.\-]/g, "");
+}
+function renderAddPreview() {
+  const el = $("addPreview");
+  const k = $("addType").value, t = normalizedTicker(k);
+  const q = t && prices[priceKey({ t, k })];
+  if (!t || !q) { el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  if (q.error) { el.innerHTML = `<span class="muted">${escapeHtml(t)}: ${escapeHtml(q.error)}</span>`; return; }
+  const shares = Math.max(0, Number($("addShares").value) || 0);
+  const name = q.name ? ` (${escapeHtml(q.name)})` : "";
+  const c = k === "crypto" ? "gold" : $("addClass").value;
+  const idx = state.holdings.findIndex((h) => h.t === t && h.k === k);
+  const max = maxShares({ t, k, c }, idx);
+  const fits = `<span class="sub ${shares > max ? "neg" : "muted"}">${
+    max > 0 ? `Up to ${max} ${k === "crypto" ? "" : max === 1 ? "share " : "shares "}fit in your ${fmt$(classBudget(c))} ${escapeHtml(assetById(c).name)} target (${fmt$(classRoom(c, idx))} left)`
+            : `No room left in your ${escapeHtml(assetById(c).name)} target (${fmt$(classBudget(c))})`}${shares > max ? " — will be limited when added" : ""}</span>`;
+  if (q.currency === "USD" && typeof q.priceCad === "number") {
+    el.innerHTML = `<strong>${escapeHtml(t)}</strong>${name}: ${fmtPrice(q.price, "US$")} × ${q.fxRate.toFixed(4)} USD/CAD${fx?.live ? " (live)" : ""}
+      = <strong>${fmtPrice(q.priceCad, "C$")}</strong> per share` +
+      (shares !== 1 ? ` · ${shares} shares ≈ <strong>${fmtPrice(q.priceCad * shares, "C$")}</strong>` : "") + fits;
+  } else {
+    el.innerHTML = `<strong>${escapeHtml(t)}</strong>${name}: <strong>${fmtPrice(q.priceCad, "C$")}</strong> per ${k === "crypto" ? "coin" : "share"}` +
+      (shares !== 1 ? ` · ${shares} ≈ <strong>${fmtPrice(q.priceCad * shares, "C$")}</strong>` : "") + fits;
+  }
+}
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  // Never leave a previous ticker's price on screen while the new one loads
+  const k = $("addType").value, t = normalizedTicker(k);
+  if (t && !prices[priceKey({ t, k })]) {
+    $("addPreview").innerHTML = `<span class="muted">Looking up ${escapeHtml(t)}…</span>`;
+    $("addPreview").classList.remove("hidden");
+  } else renderAddPreview();
+  previewTimer = setTimeout(async () => {
+    const k = $("addType").value, t = normalizedTicker(k);
+    if (!t) return renderAddPreview();
+    const key = priceKey({ t, k }), seq = ++previewSeq;
+    if (!prices[key]) {
+      try {
+        const data = await (await fetch("/api/quotes?symbols=" + encodeURIComponent(key))).json();
+        Object.assign(prices, data.quotes);
+        if (data.fx && !data.fx.error) { fx = data.fx; renderFxBadge(); }
+      } catch { /* the main price status already explains outages */ }
+    }
+    if (seq === previewSeq) renderAddPreview();
+  }, 450);
+}
+$("addTicker").addEventListener("input", schedulePreview);
+$("addType").addEventListener("change", schedulePreview);
+$("addShares").addEventListener("input", renderAddPreview);
+$("addClass").addEventListener("change", renderAddPreview);
+
+$("addForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const k = $("addType").value;
+  const t = normalizedTicker(k);
+  if (!t) return;
+  const c = k === "crypto" ? "gold" : $("addClass").value;
+  const wanted = Math.max(0, Number($("addShares").value) || 0);
+  const name = $("addName").value.trim();
+  const idx = state.holdings.findIndex((h) => h.t === t && h.k === k);
+  const r = fitShares({ t, k, c }, wanted, idx);
+  const pending = cadPrice({ t, k }) == null;  // checked again once the price loads
+  if (idx >= 0) Object.assign(state.holdings[idx], { c, s: r.s, ...(name && { n: name }), ...(pending && { pending }) });
+  else state.holdings.push({ t, n: name, c, k, s: r.s, ...(pending && { pending }) });
+  const mix = currentMix();
+  $("addMsg").textContent = (Number(mix[c]) || 0) > 0
+    ? `${t} added to the ${assetById(c).name.toLowerCase()} slice (${Number(mix[c])}% of your mix).`
+    : `${t} added, but ${assetById(c).name.toLowerCase()} is 0% of your mix. Raise it in the mix table to include ${t}.`;
+  $("addTicker").value = ""; $("addName").value = ""; $("addShares").value = 1;
+  $("addPreview").classList.add("hidden");
+  $("addTicker").focus();
+  renderAll();
+  showCapNotes(r.capped ? [r.note] : []);
+  refreshPrices();
+});
+
+$("holdTable").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-remove]");
+  if (!b) return;
+  state.holdings.splice(Number(b.dataset.remove), 1);
+  renderAll();
+});
+$("holdTable").addEventListener("change", (e) => {
+  const inp = e.target.closest("input[data-hold]");
+  if (!inp) return;
+  const i = Number(inp.dataset.hold), h = state.holdings[i];
+  const r = fitShares(h, Math.max(0, Number(inp.value) || 0), i);
+  h.s = r.s;
+  renderAll();
+  showCapNotes(r.capped ? [r.note] : []);
+});
+
+// Adds 1 share (or as much as fits under the class target). Returns a cap note, if any.
+function addHolding(t, n, c, k) {
+  if (hasHolding(t, k)) return null;
+  const r = fitShares({ t, k, c }, 1);
+  const pending = cadPrice({ t, k }) == null;
+  state.holdings.push({ t, n, c, k, s: r.s, ...(pending && { pending }) });
+  return r.capped ? r.note : null;
+}
+function addRec(t) {
+  const r = RECS.find((x) => x.t === t);
+  return addHolding(r.t, r.n, r.c, r.k);
+}
+$("recs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-rec]");
+  if (!b) return;
+  const note = addRec(b.dataset.rec);
+  renderAll();
+  showCapNotes(note ? [note] : []);
+});
+$("addAllRecs").addEventListener("click", () => {
+  const notes = visibleRecs().map((r) => addRec(r.t)).filter(Boolean);
+  renderAll();
+  showCapNotes(notes);
+});
+$("bonds").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-bond]");
+  if (!b) return;
+  const { etf } = BONDS[Number(b.dataset.bond)];
+  const note = addHolding(etf.t, etf.n, etf.c, "tsx");
+  renderAll();
+  showCapNotes(note ? [note] : []);
+});
+$("refreshPrices").addEventListener("click", refreshPrices);
+$("trimBtn").addEventListener("click", trimToFit);
+
+// Re-theme charts when the system color scheme changes
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  growthChart?.destroy(); mixChart?.destroy(); growthChart = mixChart = null; renderAll();
+});
+
+renderAll();
+refreshPrices();
+loadYields();
+// Skip a tick while someone is typing in a table, so a re-render doesn't wipe their edit
+setInterval(() => { if (!document.hidden && !document.activeElement?.closest("table")) refreshPrices(); }, 60_000);
+</script>
+</body>
+</html>
